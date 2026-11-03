@@ -132,20 +132,34 @@
           </div>
         </section>
 
-        <!-- Dokumentasi -->
-        <section class="space-y-5">
+        <!-- Dokumentasi (Foto & Video) -->
+        <section class="space-y-6">
           <h2 class="text-lg font-bold text-brandBlue border-b-2 border-slate-100 pb-2 flex items-center gap-2">
-            <i class="fa-solid fa-camera"></i> Unggah Dokumentasi
+            <i class="fa-solid id="camera-icon"></i> Unggah Dokumentasi (Foto & Video)
           </h2>
+
+          <!-- Bagian Foto -->
           <div class="dropzone p-6 rounded-2xl bg-slate-50 relative flex flex-col items-center justify-center border-2 border-slate-300 border-dashed">
             <i class="fa-solid fa-images text-4xl text-slate-400 mb-3"></i>
             <p class="text-sm font-bold text-slate-700">Foto Kegiatan <span class="text-red-500">*</span></p>
-            <p class="text-xs text-slate-500 mt-1 mb-4 text-center max-w-md">Maksimal 10MB per foto. Bisa memilih lebih dari 1 foto dari galeri.</p>
-            <input type="file" id="fotoKegiatan" accept="image/*" multiple onchange="handleMultiFileSelect(this)" class="hidden">
+            <p class="text-xs text-slate-500 mt-1 mb-4 text-center max-w-md">Maksimal 10MB per foto. Bisa memilih lebih dari 1 foto.</p>
+            <input type="file" id="fotoKegiatan" accept="image/*" multiple onchange="handleFileSelect(this, 'foto')" class="hidden">
             <button type="button" onclick="document.getElementById('fotoKegiatan').click()" class="px-6 py-3 bg-brandBlue text-white rounded-xl text-sm font-semibold hover:bg-blue-800 transition shadow flex items-center gap-2">
-              <i class="fa-solid fa-folder-open"></i> Buka Galeri
+              <i class="fa-solid fa-folder-open"></i> Pilih Foto
             </button>
             <div id="previewFoto" class="mt-5 w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+          </div>
+
+          <!-- Bagian Video -->
+          <div class="dropzone p-6 rounded-2xl bg-slate-50 relative flex flex-col items-center justify-center border-2 border-slate-300 border-dashed">
+            <i class="fa-solid fa-video text-4xl text-slate-400 mb-3"></i>
+            <p class="text-sm font-bold text-slate-700">Video Kegiatan <span class="text-slate-400 font-normal">(Opsional)</span></p>
+            <p class="text-xs text-slate-500 mt-1 mb-4 text-center max-w-md">Format video (MP4, MKV, MOV, dll). Bisa memilih lebih dari 1 video.</p>
+            <input type="file" id="videoKegiatan" accept="video/*" multiple onchange="handleFileSelect(this, 'video')" class="hidden">
+            <button type="button" onclick="document.getElementById('videoKegiatan').click()" class="px-6 py-3 bg-slate-700 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 transition shadow flex items-center gap-2">
+              <i class="fa-solid fa-film"></i> Pilih Video
+            </button>
+            <div id="previewVideo" class="mt-5 w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
           </div>
         </section>
 
@@ -271,10 +285,10 @@
     function renderCards(dataArray, container) {
       container.innerHTML = '';
       dataArray.forEach(item => {
-        // Render List Foto & Tombol Unduh/Lihat
+        // Render List Foto
         let fotoHTML = '';
         if (item.fotoUrls && item.fotoUrls.length > 0) {
-          fotoHTML = `<div class="mt-4 border-t border-slate-100 pt-3"><p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Lampiran Dokumentasi</p><div class="flex flex-wrap gap-2">`;
+          fotoHTML = `<div class="mt-3"><p class="text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Lampiran Foto</p><div class="flex flex-wrap gap-2">`;
           item.fotoUrls.forEach((url, i) => {
             if(url.trim() !== "") {
               fotoHTML += `
@@ -284,8 +298,28 @@
             }
           });
           fotoHTML += `</div></div>`;
+        }
+
+        // Render List Video (jika ada properti videoUrls dari Google Script)
+        let videoHTML = '';
+        if (item.videoUrls && item.videoUrls.length > 0) {
+          videoHTML = `<div class="mt-3"><p class="text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Lampiran Video</p><div class="flex flex-wrap gap-2">`;
+          item.videoUrls.forEach((url, i) => {
+            if(url.trim() !== "") {
+              videoHTML += `
+                <a href="${url}" target="_blank" class="px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-700 hover:text-white rounded-md text-xs font-semibold transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-video"></i> Video ${i+1}
+                </a>`;
+            }
+          });
+          videoHTML += `</div></div>`;
+        }
+
+        let combinedLampiran = '';
+        if (fotoHTML || videoHTML) {
+          combinedLampiran = `<div class="mt-4 border-t border-slate-100 pt-3">${fotoHTML}${videoHTML}</div>`;
         } else {
-          fotoHTML = `<div class="mt-4 border-t border-slate-100 pt-3 text-xs italic text-slate-400">Tidak ada lampiran foto</div>`;
+          combinedLampiran = `<div class="mt-4 border-t border-slate-100 pt-3 text-xs italic text-slate-400">Tidak ada lampiran dokumentasi</div>`;
         }
 
         const card = document.createElement('div');
@@ -307,49 +341,81 @@
               ${item.konteks.replace(/\n/g, '<br>')}
             </div>
           </div>
-          ${fotoHTML}
+          ${combinedLampiran}
         `;
         container.appendChild(card);
       });
     }
 
-    // --- FORM LOGIC (Sama seperti sebelumnya) ---
+    // --- FORM LOGIC ---
     function setMinDateAkhir() {
       const tglAwal = document.getElementById('tanggalAwal').value;
       document.getElementById('tanggalAkhir').min = tglAwal;
       if(document.getElementById('tanggalAkhir').value < tglAwal) document.getElementById('tanggalAkhir').value = tglAwal;
     }
 
-    let fileBase64Map = [];
-    function handleMultiFileSelect(input) {
+    let fotoBase64Map = [];
+    let videoBase64Map = [];
+
+    function handleFileSelect(input, type) {
       const files = Array.from(input.files);
       files.forEach((file) => {
-        if (file.size > 10 * 1024 * 1024) return alert(`File ${file.name} melebihi 10MB!`);
+        // Batasan ukuran: Foto maks 10MB, Video maks 50MB (sesuaikan jika perlu)
+        const maxSize = type === 'foto' ? 10 * 1024 * 1024 : 50 * 1024 * 1024;
+        if (file.size > maxSize) {
+          return alert(`File ${file.name} terlalu besar! Batas maksimal ${type === 'foto' ? '10MB' : '50MB'}.`);
+        }
+        
         const reader = new FileReader();
         reader.onload = function(e) {
-          fileBase64Map.push({ name: file.name, mimeType: file.type, bytes: e.target.result.split(',')[1] });
-          renderPreviewForm();
+          const fileObj = { name: file.name, mimeType: file.type, bytes: e.target.result.split(',')[1] };
+          if (type === 'foto') {
+            fotoBase64Map.push(fileObj);
+            renderPreview('foto');
+          } else {
+            videoBase64Map.push(fileObj);
+            renderPreview('video');
+          }
         };
         reader.readAsDataURL(file);
       });
       input.value = ""; 
     }
 
-    function renderPreviewForm() {
-      const container = document.getElementById('previewFoto');
+    function renderPreview(type) {
+      const container = document.getElementById(type === 'foto' ? 'previewFoto' : 'previewVideo');
+      const dataArray = type === 'foto' ? fotoBase64Map : videoBase64Map;
+      const iconClass = type === 'foto' ? 'fa-image text-brandBlue' : 'fa-video text-purple-600';
+
       container.innerHTML = '';
-      fileBase64Map.forEach((f, idx) => {
+      dataArray.forEach((f, idx) => {
         const itemEl = document.createElement('div');
         itemEl.className = "flex justify-between p-3 bg-white rounded-lg border border-slate-200 shadow-sm text-xs font-medium text-slate-700";
-        itemEl.innerHTML = `<div class="flex items-center gap-2 truncate"><i class="fa-solid fa-image text-brandBlue"></i><span class="truncate">${f.name}</span></div>
-                            <button type="button" onclick="fileBase64Map.splice(${idx}, 1); renderPreviewForm();" class="text-red-500 hover:text-red-700 p-1"><i class="fa-solid fa-trash"></i></button>`;
+        itemEl.innerHTML = `
+          <div class="flex items-center gap-2 truncate">
+            <i class="fa-solid ${iconClass}"></i>
+            <span class="truncate">${f.name}</span>
+          </div>
+          <button type="button" onclick="removeItem('${type}', ${idx})" class="text-red-500 hover:text-red-700 p-1">
+            <i class="fa-solid fa-trash"></i>
+          </button>`;
         container.appendChild(itemEl);
       });
     }
 
+    function removeItem(type, idx) {
+      if (type === 'foto') {
+        fotoBase64Map.splice(idx, 1);
+        renderPreview('foto');
+      } else {
+        videoBase64Map.splice(idx, 1);
+        renderPreview('video');
+      }
+    }
+
     function submitForm(e) {
       e.preventDefault();
-      if (fileBase64Map.length === 0) return alert("Harap unggah minimal 1 foto dokumentasi!");
+      if (fotoBase64Map.length === 0) return alert("Harap unggah minimal 1 foto dokumentasi!");
       document.getElementById('loadingModal').classList.remove('hidden');
 
       const payload = {
@@ -361,7 +427,8 @@
         kecamatan: document.getElementById('kecamatan').value,
         desa: document.getElementById('desa').value,
         alamat: document.getElementById('alamat').value,
-        fotoKegiatan: fileBase64Map
+        fotoKegiatan: fotoBase64Map,
+        videoKegiatan: videoBase64Map // Menambahkan data video ke payload
       };
 
       fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify(payload) })
@@ -372,8 +439,10 @@
           document.getElementById('successMsg').innerText = data.message;
           document.getElementById('successModal').classList.remove('hidden');
           document.getElementById('laporanForm').reset();
-          fileBase64Map = [];
-          renderPreviewForm();
+          fotoBase64Map = [];
+          videoBase64Map = [];
+          renderPreview('foto');
+          renderPreview('video');
         } else alert("Error: " + data.message);
       })
       .catch(err => {
